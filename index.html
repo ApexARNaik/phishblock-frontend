@@ -2,15 +2,46 @@
 <html>
 
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width">
-  <title>replit</title>
-  <link href="style.css" rel="stylesheet" type="text/css" />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Phishblock Reports</title>
+    <link href="style.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 </head>
 
 <body>
-  Hello world
-  <script src="script.js"></script>
+    <h1>Phishblock Reports</h1>
+
+    <button id="connectButton">Connect Wallet</button>
+    <p id="walletAddress"></p>
+
+    <hr>
+    <h2>Submit New Report</h2>
+    <label for="cidInput">Report CID/URL:</label>
+    <input type="text" id="cidInput" placeholder="Enter CID or URL here">
+    <button id="submitReportButton">Submit Report (Stake 0.01 MATIC)</button>
+    <p id="submitStatus"></p>
+    <hr>
+    <h2>Vote on Report</h2>
+    <label for="voteIdInput">Report ID:</label>
+    <input type="number" id="voteIdInput" placeholder="Enter Report ID">
+    <button id="upvoteButton">Upvote 👍</button>
+    <button id="downvoteButton">Downvote 👎</button>
+    <p id="voteStatus"></p>
+    <hr>
+    <h2>Resolve Report</h2>
+    <label for="resolveIdInput">Report ID:</label>
+    <input type="number" id="resolveIdInput" placeholder="Enter Report ID">
+    <button id="resolveButton">Resolve Report</button>
+    <p id="resolveStatus"></p>
+    <hr>
+    <h2>Reported Sites</h2>
+    <button id="loadReportsButton">Load Reports</button>
+    <ul id="reportList">
+        <li>Loading reports...</li>
+    </ul>
+
+    <script src="script.js"></script>
 </body>
 
 </html>

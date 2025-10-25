@@ -1,4 +1,104 @@
-html {
-  height: 100%;
-  width: 100%;
+/* Basic Reset & Font */
+body {
+    font-family: sans-serif;
+    line-height: 1.6;
+    margin: 20px;
+    background-color: #f4f4f4;
+    /* Light grey background */
+    color: #333;
+    /* Darker text */
+}
+
+h1,
+h2 {
+    color: #1a1a1a;
+    /* Even darker headings */
+    border-bottom: 2px solid #ddd;
+    /* Add a subtle line below headings */
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+
+/* Button Styling */
+button {
+    background-color: #007bff;
+    /* Blue */
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 5px 2px;
+    /* Add some space around buttons */
+    font-size: 1em;
+}
+
+button:disabled {
+    background-color: #cccccc;
+    /* Grey out disabled buttons */
+    cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+    background-color: #0056b3;
+    /* Darker blue on hover */
+}
+
+/* Input Field Styling */
+input[type="text"],
+input[type="number"] {
+    padding: 8px;
+    margin: 5px 5px 10px 0;
+    /* Space below and to the right */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    /* Prevent padding from making it too wide */
+}
+
+/* Report List Styling */
+#reportList {
+    list-style: none;
+    /* Remove default bullet points */
+    padding: 0;
+}
+
+#reportList li {
+    background-color: #ffffff;
+    /* White background for each report */
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 10px;
+    /* Space between reports */
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+    /* Subtle shadow */
+}
+
+/* Status Messages */
+#walletAddress,
+#submitStatus,
+#voteStatus,
+#resolveStatus {
+    margin-top: 5px;
+    font-size: 0.9em;
+    color: #555;
+    /* Slightly lighter text for status */
+}
+
+/* Horizontal Rules */
+hr {
+    border: 0;
+    height: 1px;
+    background-color: #ddd;
+    margin: 25px 0;
+    /* More space around horizontal lines */
+}
+
+/* Labels */
+label {
+    display: inline-block;
+    /* Keep label next to input */
+    margin-right: 5px;
+    font-weight: bold;
 }
