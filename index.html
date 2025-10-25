@@ -11,33 +11,62 @@
 
 <body>
     <div class="container">
+        <div id="connectSection" class="page-section">
+            <h1>Welcome to Phishblock</h1>
+            <p>A decentralized platform to report and validate phishing sites using community voting and economic
+                incentives.</p>
+            <p>Please connect your MetaMask wallet (Polygon Amoy Network) to participate.</p>
+            <button id="connectButton">Connect Wallet</button>
+            <p id="connectStatus" class="status-text"></p>
+            <hr>
+        </div>
 
-        <h1>Phishblock Reports</h1>
+        <div id="appSection" class="page-section" style="display: none;">
+            <div class="header-bar">
+                <h1 id="ata">Phishblock Reports</h1>
+                <div class="wallet-info">
+                    <p id="walletAddress">Not Connected</p>
+                    <button id="logoutButton">Disconnect</button>
+                    <button id="showAdminLoginButton" class="admin-button">Admin Access</button>
+                </div>
+            </div>
 
-        <button id="connectButton">Connect Wallet</button>
-        <p id="walletAddress"></p>
 
-        <hr>
+            <h2>Submit New Report</h2>
+            <label for="cidInput">Report CID/URL:</label>
+            <input type="text" id="cidInput" placeholder="Enter CID or URL (e.g., ipfs://... or suspicious.com)">
+            <button id="submitReportButton">Submit Report</button>
+            <p id="submitStatus" class="status-text"></p>
 
-        <h2>Submit New Report</h2>
-        <label for="cidInput">Report CID/URL:</label>
-        <input type="text" id="cidInput" placeholder="Enter CID or URL here">
-        <button id="submitReportButton">Submit Report (Stake 0.01 MATIC)</button>
-        <p id="submitStatus"></p>
+            <hr>
 
-        <hr>
+            <h2>Reported Sites</h2>
+            <button id="loadReportsButton">Refresh Reports</button>
+            <ul id="reportList">
+                <li>Click "Refresh Reports" to load...</li>
+            </ul>
+        </div>
 
-        <h2>Owner Actions</h2>
-        <button id="withdrawButton">Withdraw Slashed Funds</button>
-        <p id="withdrawStatus"></p>
+        <div id="adminLoginSection" class="page-section" style="display: none;">
+            <h1>Admin Access</h1>
+            <label for="adminPassword">Enter Admin Code:</label>
+            <input type="password" id="adminPassword" placeholder="Enter code">
+            <button id="adminLoginButton">Login</button>
+            <p id="adminLoginStatus" class="status-text error-text"></p>
+            <hr>
+            <button id="backToConnectButton" class="secondary-button">Back to Home</button>
+        </div>
 
-        <hr>
-
-        <h2>Reported Sites</h2>
-        <button id="loadReportsButton">Load Reports</button>
-        <ul id="reportList">
-            <li>Loading reports...</li>
-        </ul>
+        <div id="adminSection" class="page-section" style="display: none;">
+            <div class="header-bar">
+                <h1>Admin Panel</h1>
+                <button id="adminLogoutButton" class="secondary-button">Logout Admin</button>
+            </div>
+            <p>Welcome, Owner!</p>
+            <p>Withdraw funds slashed from incorrectly reported sites.</p>
+            <button id="withdrawButton">Withdraw Slashed Funds</button>
+            <p id="withdrawStatus" class="status-text"></p>
+        </div>
 
     </div>
     <script src="script.js"></script>

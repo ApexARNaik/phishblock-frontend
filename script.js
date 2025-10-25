@@ -181,161 +181,238 @@ const contractABI = [
         "type": "function"
     }
 ]; // Make sure ABI is pasted correctly
+const ADMIN_PASSWORD = "2306"; // !!! INSECURE - For demo only !!!
 
 // --- 2. GLOBAL VARIABLES ---
 let provider;
 let signer;
 let contract;
+let ownerAddress = null;
+let currentUserAddress = null;
 
 // --- 3. DOM ELEMENTS ---
-// General Elements
+// Sections
+const connectSection = document.getElementById('connectSection');
+const appSection = document.getElementById('appSection');
+const adminLoginSection = document.getElementById('adminLoginSection');
+const adminSection = document.getElementById('adminSection');
+
+// Connect Section Elements
 const connectButton = document.getElementById('connectButton');
+const connectStatus = document.getElementById('connectStatus');
+const showAdminLoginButton = document.getElementById('showAdminLoginButton');
+
+// App Section Elements
 const walletAddressDisplay = document.getElementById('walletAddress');
 const loadReportsButton = document.getElementById('loadReportsButton');
 const reportList = document.getElementById('reportList');
-
-// Elements for Submitting Reports
 const cidInput = document.getElementById('cidInput');
 const submitReportButton = document.getElementById('submitReportButton');
 const submitStatusDisplay = document.getElementById('submitStatus');
+const logoutButton = document.getElementById('logoutButton');
 
-// Elements for Owner Actions
+// Admin Login Elements
+const adminPasswordInput = document.getElementById('adminPassword');
+const adminLoginButton = document.getElementById('adminLoginButton');
+const adminLoginStatus = document.getElementById('adminLoginStatus');
+const backToConnectButton = document.getElementById('backToConnectButton');
+
+// Admin Section Elements
 const withdrawButton = document.getElementById('withdrawButton');
 const withdrawStatusDisplay = document.getElementById('withdrawStatus');
+const adminLogoutButton = document.getElementById('adminLogoutButton');
+
 
 // --- 4. EVENT LISTENERS ---
 connectButton.addEventListener('click', connectWallet);
+logoutButton.addEventListener('click', disconnectWallet);
 loadReportsButton.addEventListener('click', loadReports);
 submitReportButton.addEventListener('click', submitReport);
-withdrawButton.addEventListener('click', withdrawSlashedFunds); // Listener for owner withdraw
+showAdminLoginButton.addEventListener('click', showAdminLogin);
+adminLoginButton.addEventListener('click', handleAdminLogin);
+backToConnectButton.addEventListener('click', showConnectSection);
+withdrawButton.addEventListener('click', withdrawSlashedFunds);
+adminLogoutButton.addEventListener('click', showConnectSection);
 
-// --- 5. FUNCTIONS ---
 
-// Function to connect MetaMask
-async function connectWallet() {
-    if (typeof window.ethereum !== 'undefined') {
-        console.log('MetaMask is installed!');
-        try {
-            provider = new ethers.providers.Web3Provider(window.ethereum);
-            await provider.send("eth_requestAccounts", []);
-            signer = provider.getSigner();
-            const address = await signer.getAddress();
-            console.log("Account:", address);
-
-            walletAddressDisplay.textContent = `Connected: ${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-            connectButton.textContent = 'Wallet Connected';
-            connectButton.disabled = true;
-
-            contract = new ethers.Contract(contractAddress, contractABI, signer);
-            loadReportsButton.disabled = false;
-
-        } catch (error) {
-            console.error("User denied account access or error occurred:", error);
-            walletAddressDisplay.textContent = 'Connection failed.';
-        }
-    } else {
-        console.log('MetaMask is not installed!');
-        walletAddressDisplay.textContent = 'Please install MetaMask!';
+// --- 5. PAGE NAVIGATION / VISIBILITY FUNCTIONS ---
+function showSection(sectionToShow) {
+    [connectSection, appSection, adminLoginSection, adminSection].forEach(section => {
+        if (section) section.style.display = 'none';
+    });
+    if (sectionToShow) {
+        sectionToShow.style.display = 'block';
     }
 }
 
-// Function to load and display reports (with integrated buttons)
-async function loadReports() {
-    if (!contract) {
-        alert("Please connect your wallet first.");
+function showConnectSection() {
+    showSection(connectSection);
+    // Clear status messages when returning to connect
+    connectStatus.textContent = '';
+    adminLoginStatus.textContent = '';
+    adminPasswordInput.value = ''; // Clear password field
+}
+
+function showAdminLogin() {
+    showSection(adminLoginSection);
+    adminLoginStatus.textContent = ''; // Clear previous errors
+}
+
+// --- 6. CORE WALLET & CONTRACT FUNCTIONS ---
+
+async function connectWallet() {
+    if (typeof window.ethereum === 'undefined') {
+        connectStatus.textContent = 'Please install MetaMask!';
         return;
     }
 
-    reportList.innerHTML = '<li>Loading reports...</li>';
+    connectStatus.textContent = 'Connecting... Please approve in MetaMask.';
+    connectButton.disabled = true;
 
     try {
-        const count = await contract.reportCount();
-        console.log("Total reports:", count.toNumber());
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        currentUserAddress = await signer.getAddress();
+        console.log("Account Connected:", currentUserAddress);
 
-        if (count.toNumber() === 0) {
-            reportList.innerHTML = '<li>No reports submitted yet.</li>';
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+        // Fetch owner address
+        try {
+            ownerAddress = await contract.owner();
+            console.log("Contract Owner:", ownerAddress);
+        } catch (ownerError) {
+            console.error("Could not fetch owner address:", ownerError);
+            connectStatus.textContent = 'Error fetching contract owner. Refresh and try again.';
+            connectButton.disabled = false;
             return;
         }
 
-        reportList.innerHTML = ''; // Clear loading message
+        // Successfully connected
+        showSection(appSection); // Show the main app section
+        walletAddressDisplay.textContent = `Connected: ${currentUserAddress.substring(0, 6)}...${currentUserAddress.substring(currentUserAddress.length - 4)}`;
+        loadReportsButton.disabled = false;
+        submitStatusDisplay.textContent = ''; // Clear any previous submit status
+        connectButton.disabled = false; // Re-enable in case user disconnects/reconnects
 
-        // Loop through each report ID and fetch details
-        for (let i = 0; i < count.toNumber(); i++) {
-            console.log("Fetching report ID:", i);
+        await loadReports(); // Load reports immediately after connect
+
+    } catch (error) {
+        console.error("Connection Error:", error);
+        connectStatus.textContent = 'Connection failed. User rejected or error occurred.';
+        connectButton.disabled = false;
+        showConnectSection(); // Ensure user stays on connect page
+    }
+}
+
+function disconnectWallet() {
+    // Reset state and return to connect screen
+    provider = null;
+    signer = null;
+    contract = null;
+    currentUserAddress = null;
+    ownerAddress = null;
+    walletAddressDisplay.textContent = 'Not Connected';
+    console.log("Wallet disconnected");
+    showConnectSection();
+}
+
+async function loadReports() {
+    if (!contract) {
+        console.error("Cannot load reports: Contract not initialized.");
+        reportList.innerHTML = '<li>Error: Connect wallet first.</li>';
+        return;
+    }
+    reportList.innerHTML = '<li><p>🔄 Loading reports from the blockchain...</p></li>';
+    loadReportsButton.disabled = true;
+
+    try {
+        const count = await contract.reportCount();
+        const numReports = count.toNumber();
+        console.log("Total reports:", numReports);
+
+        if (numReports === 0) {
+            reportList.innerHTML = '<li><p>📬 No reports submitted yet. Be the first!</p></li>';
+            loadReportsButton.disabled = false;
+            return;
+        }
+
+        reportList.innerHTML = ''; // Clear loading
+
+        // Fetch reports (consider fetching in parallel for many reports, but sequential is simpler for now)
+        for (let i = numReports - 1; i >= 0; i--) { // Load newest first
             const report = await contract.reports(i);
-            // report is array: [cid, reporter, upvotes, downvotes, stakedAmount, isResolved]
-
             const listItem = document.createElement('li');
             listItem.setAttribute('data-report-id', i);
+            listItem.classList.add(report.isResolved ? 'resolved' : 'active'); // Add class for potential styling
 
-            // Create list item HTML with integrated buttons
             listItem.innerHTML = `
                 <div>
-                    <b>Report ID: ${i}</b> | Resolved: ${report.isResolved ? '✅ Yes' : '❌ No'}<br>
-                    CID: ${report.cid}<br>
-                    Reporter: ${report.reporter.substring(0, 6)}...${report.reporter.substring(report.reporter.length - 4)}<br>
-                    Votes: 👍 ${report.upvotes.toString()} / 👎 ${report.downvotes.toString()}
+                    <b>Report ID: ${i}</b> | Status: ${report.isResolved ? '✅ Resolved' : '⏳ Active'}<br>
+                    <span class="cid">CID/URL: ${report.cid}</span><br>
+                    <span class="reporter">Reporter: ${report.reporter.substring(0, 6)}...${report.reporter.substring(report.reporter.length - 4)}</span><br>
+                    <span class="votes">Votes: 👍 ${report.upvotes.toString()} / 👎 ${report.downvotes.toString()}</span>
                 </div>
                 <div class="actions">
                     <button class="upvote-btn" data-id="${i}" ${report.isResolved ? 'disabled' : ''}>Upvote 👍</button>
                     <button class="downvote-btn" data-id="${i}" ${report.isResolved ? 'disabled' : ''}>Downvote 👎</button>
                     <button class="resolve-btn" data-id="${i}" ${report.isResolved ? 'disabled' : ''}>Resolve</button>
                 </div>
-                <p class="status-msg" id="status-${i}"></p> <hr>
+                <p class="status-msg" id="status-${i}"></p>
+                <hr style="margin: 10px 0;">
             `;
 
-            // Add event listeners ONLY if buttons exist and are not disabled
+            reportList.appendChild(listItem); // Append as we fetch
+
+            // Add listeners after appending
             const upvoteBtn = listItem.querySelector('.upvote-btn');
             const downvoteBtn = listItem.querySelector('.downvote-btn');
             const resolveBtn = listItem.querySelector('.resolve-btn');
 
-            if (upvoteBtn && !report.isResolved) {
-                upvoteBtn.addEventListener('click', () => handleVote(i, true, listItem));
-            }
-            if (downvoteBtn && !report.isResolved) {
-                downvoteBtn.addEventListener('click', () => handleVote(i, false, listItem));
-            }
-            if (resolveBtn && !report.isResolved) {
-                resolveBtn.addEventListener('click', () => resolveReport(i, listItem));
-            }
+            if (upvoteBtn && !report.isResolved) { upvoteBtn.addEventListener('click', () => handleVote(i, true, listItem)); }
+            if (downvoteBtn && !report.isResolved) { downvoteBtn.addEventListener('click', () => handleVote(i, false, listItem)); }
+            if (resolveBtn && !report.isResolved) { resolveBtn.addEventListener('click', () => resolveReport(i, listItem)); }
 
-            reportList.appendChild(listItem);
-        } // End of for loop
+        } // End for loop
 
     } catch (error) {
         console.error("Error loading reports:", error);
-        reportList.innerHTML = '<li>Error loading reports. Check console.</li>';
+        reportList.innerHTML = '<li>❌ Error loading reports. Check console or try refreshing.</li>';
+    } finally {
+        loadReportsButton.disabled = false;
     }
 }
 
-// Function to submit a new report
+
 async function submitReport() {
-    if (!contract || !signer) {
-        alert("Please connect your wallet first.");
-        return;
-    }
-    const cid = cidInput.value;
-    if (!cid) {
-        alert("Please enter a CID or URL to report.");
-        return;
-    }
-    submitStatusDisplay.textContent = 'Preparing transaction...';
+    if (!contract || !signer) { alert("Connect wallet first."); return; }
+    const cid = cidInput.value.trim(); // Trim whitespace
+    if (!cid) { alert("Enter CID/URL."); return; }
+
+    let stakeAmountWei, stakeAmountEther;
+    try {
+        stakeAmountWei = await contract.stakeAmount();
+        stakeAmountEther = ethers.utils.formatEther(stakeAmountWei);
+    } catch (e) { submitStatusDisplay.textContent = 'Error fetching stake amount.'; return; }
+
+    const confirmed = confirm(`You are about to submit report "${cid}" and stake ${stakeAmountEther} MATIC. Proceed?`);
+    if (!confirmed) { submitStatusDisplay.textContent = 'Submission cancelled.'; return; }
+
+    submitStatusDisplay.textContent = '🚀 Preparing transaction... Please confirm in MetaMask.';
     submitReportButton.disabled = true;
 
     try {
-        const stakeAmountWei = await contract.stakeAmount();
-        console.log("Staking amount in wei:", stakeAmountWei.toString());
-        console.log("Submitting report for CID:", cid);
-
+        console.log("Submitting report:", cid, "with stake:", stakeAmountWei.toString());
         const tx = await contract.createReport(cid, { value: stakeAmountWei });
-        submitStatusDisplay.textContent = `Transaction sent! Waiting... Hash: ${tx.hash.substring(0, 10)}...`;
-        console.log("Transaction sent:", tx.hash);
+        submitStatusDisplay.textContent = `⏳ Transaction sent! Waiting for confirmation... Hash: ${tx.hash.substring(0, 10)}...`;
+        console.log("Tx Sent:", tx.hash);
 
-        await tx.wait();
-        submitStatusDisplay.textContent = 'Report submitted successfully!';
-        console.log("Transaction confirmed!");
+        await tx.wait(1); // Wait for 1 confirmation
+        submitStatusDisplay.textContent = '✅ Report submitted successfully!';
+        console.log("Tx Confirmed!");
         cidInput.value = '';
-        await loadReports(); // Refresh list
+        await loadReports();
 
     } catch (error) {
         console.error("Error submitting report:", error);
@@ -346,160 +423,169 @@ async function submitReport() {
     }
 }
 
-// Function to handle voting (updated for integrated buttons)
 async function handleVote(reportIdNum, isUpvote, listItem) {
-    if (!contract || !signer) {
-        alert("Please connect your wallet first.");
-        return;
-    }
+    if (!contract || !signer) { alert("Connect wallet first."); return; }
 
     const statusElement = listItem.querySelector('.status-msg');
     const upvoteBtn = listItem.querySelector('.upvote-btn');
     const downvoteBtn = listItem.querySelector('.downvote-btn');
 
-    statusElement.textContent = `Preparing ${isUpvote ? 'upvote' : 'downvote'}...`;
-    if (upvoteBtn) upvoteBtn.disabled = true; // Disable buttons on this specific item
+    statusElement.textContent = `🚀 Preparing ${isUpvote ? 'upvote' : 'downvote'}... Confirm in MetaMask.`;
+    if (upvoteBtn) upvoteBtn.disabled = true;
     if (downvoteBtn) downvoteBtn.disabled = true;
 
     try {
         console.log(`Voting ${isUpvote ? 'up' : 'down'} on report ID:`, reportIdNum);
         const tx = await contract.vote(reportIdNum, isUpvote);
-        statusElement.textContent = `Vote sent! Waiting... Hash: ${tx.hash.substring(0, 10)}...`;
-        console.log("Vote transaction sent:", tx.hash);
+        statusElement.textContent = `⏳ Vote sent! Waiting... Hash: ${tx.hash.substring(0, 10)}...`;
+        console.log("Vote Tx Sent:", tx.hash);
 
-        await tx.wait();
-        statusElement.textContent = 'Vote confirmed!';
-        console.log("Vote confirmed!");
-        await loadReports(); // Refresh list
+        await tx.wait(1);
+        statusElement.textContent = '✅ Vote confirmed!';
+        console.log("Vote Confirmed!");
+        await loadReports();
 
     } catch (error) {
         console.error("Error submitting vote:", error);
         let displayError = parseContractError(error, "Error submitting vote.", "You have already voted!");
         statusElement.textContent = displayError;
-    } finally {
-        // Re-enable buttons only if the report isn't resolved now
-        if (upvoteBtn && !listItem.innerHTML.includes('Resolved: ✅ Yes')) upvoteBtn.disabled = false;
-        if (downvoteBtn && !listItem.innerHTML.includes('Resolved: ✅ Yes')) downvoteBtn.disabled = false;
+        // Only re-enable if there was an error
+        if (upvoteBtn) upvoteBtn.disabled = false;
+        if (downvoteBtn) downvoteBtn.disabled = false;
     }
+    // No finally needed - buttons disabled on success via loadReports re-render
 }
 
-// Function to resolve a report (updated for integrated buttons)
 async function resolveReport(reportIdNum, listItem) {
-    if (!contract || !signer) {
-        alert("Please connect your wallet first.");
-        return;
-    }
+    if (!contract || !signer) { alert("Connect wallet first."); return; }
 
     const statusElement = listItem.querySelector('.status-msg');
     const resolveBtn = listItem.querySelector('.resolve-btn');
 
-    statusElement.textContent = 'Preparing resolve transaction...';
+    statusElement.textContent = '🚀 Preparing resolve transaction... Confirm in MetaMask.';
     if (resolveBtn) resolveBtn.disabled = true;
 
     try {
         console.log("Resolving report ID:", reportIdNum);
         const tx = await contract.resolveReport(reportIdNum);
-        statusElement.textContent = `Resolve sent! Waiting... Hash: ${tx.hash.substring(0, 10)}...`;
-        console.log("Resolve transaction sent:", tx.hash);
+        statusElement.textContent = `⏳ Resolve sent! Waiting... Hash: ${tx.hash.substring(0, 10)}...`;
+        console.log("Resolve Tx Sent:", tx.hash);
 
-        await tx.wait();
-        statusElement.textContent = 'Report resolved successfully!';
-        console.log("Resolve confirmed!");
-        await loadReports(); // Refresh list
+        await tx.wait(1);
+        statusElement.textContent = '✅ Report resolved successfully!';
+        console.log("Resolve Confirmed!");
+        await loadReports(); // Reload to update status and disable buttons
 
     } catch (error) {
         console.error("Error resolving report:", error);
         let displayError = parseContractError(error, "Error resolving report.", "Not enough votes", "Report already resolved");
         statusElement.textContent = displayError;
-        // Keep button disabled if successful (as report is now resolved)
-        // Only re-enable if there was an error *other* than 'already resolved'
-        if (resolveBtn && !displayError.includes("already resolved")) resolveBtn.disabled = false;
+        if (resolveBtn && !displayError.includes("already resolved")) resolveBtn.disabled = false; // Re-enable only if error wasn't 'already resolved'
     }
-    // No finally needed here as button state depends on error type or success
 }
 
 
-// Function for owner to withdraw slashed funds
-async function withdrawSlashedFunds() {
-    if (!contract || !signer) {
-        alert("Please connect your wallet first.");
-        return;
-    }
-    try { // Check owner status first
-        const ownerAddress = await contract.owner();
-        const currentUserAddress = await signer.getAddress();
-        if (ownerAddress.toLowerCase() !== currentUserAddress.toLowerCase()) {
-            withdrawStatusDisplay.textContent = "Error: Only the contract owner can withdraw.";
-            return;
+// --- 7. ADMIN FUNCTIONS ---
+
+function handleAdminLogin() {
+    const enteredPassword = adminPasswordInput.value;
+    if (enteredPassword === ADMIN_PASSWORD) {
+        if (currentUserAddress && ownerAddress && currentUserAddress.toLowerCase() === ownerAddress.toLowerCase()) {
+            showSection(adminSection);
+            withdrawStatusDisplay.textContent = '';
+        } else {
+            adminLoginStatus.textContent = "Error: Connected wallet is not the contract owner.";
         }
-    } catch (error) {
-        console.error("Error checking owner:", error);
-        withdrawStatusDisplay.textContent = "Error checking owner status.";
-        return;
+    } else {
+        adminLoginStatus.textContent = "Incorrect admin code.";
+    }
+    adminPasswordInput.value = '';
+}
+
+async function withdrawSlashedFunds() {
+    if (!contract || !signer) { alert("Connect wallet first."); return; }
+    if (!currentUserAddress || !ownerAddress || currentUserAddress.toLowerCase() !== ownerAddress.toLowerCase()) {
+        withdrawStatusDisplay.textContent = "Error: Only owner can withdraw."; return;
     }
 
-    withdrawStatusDisplay.textContent = 'Preparing withdraw transaction...';
+    withdrawStatusDisplay.textContent = '🚀 Preparing withdraw... Confirm in MetaMask.';
     withdrawButton.disabled = true;
 
     try {
-        console.log("Attempting to withdraw slashed funds...");
+        console.log("Attempting withdraw...");
         const tx = await contract.withdrawSlashedFunds();
-        withdrawStatusDisplay.textContent = `Withdraw sent! Waiting... Hash: ${tx.hash.substring(0, 10)}...`;
-        console.log("Withdraw transaction sent:", tx.hash);
-
-        await tx.wait();
-        withdrawStatusDisplay.textContent = 'Slashed funds withdrawn successfully!';
-        console.log("Withdraw confirmed!");
+        withdrawStatusDisplay.textContent = `⏳ Withdraw sent! Waiting... Hash: ${tx.hash.substring(0, 10)}...`;
+        console.log("Withdraw Tx Sent:", tx.hash);
+        await tx.wait(1);
+        withdrawStatusDisplay.textContent = '✅ Slashed funds withdrawn successfully!';
+        console.log("Withdraw Confirmed!");
 
     } catch (error) {
         console.error("Error withdrawing funds:", error);
         let displayError = parseContractError(error, "Error withdrawing funds.");
+        // Check if the error indicates no balance to withdraw
+        if (displayError.toLowerCase().includes("transfer failed") || displayError.toLowerCase().includes("insufficient balance")) {
+            displayError = "✅ No slashed funds available to withdraw currently.";
+        }
         withdrawStatusDisplay.textContent = displayError;
     } finally {
         withdrawButton.disabled = false;
     }
 }
 
-// --- UTILITY FUNCTION ---
-// Helper to parse common contract error reasons
+// --- UTILITY FUNCTION --- (Improved Error Parsing)
 function parseContractError(error, defaultMessage, specificReason1 = null, specificReason2 = null) {
-    console.log("Raw error:", error); // Log the full error object
+    console.log("Raw error object:", error); // Log the full error
     let message = defaultMessage;
-    // Ethers v5 structure
-    if (error.reason) {
-        message = `Error: ${error.reason}`;
-    } else if (error.data && error.data.message) {
-        message = `Error: ${error.data.message}`;
-    } else if (error.error && error.error.message) { // Another possible structure
-        message = `Error: ${error.error.message}`;
-    } else if (error.message) {
-        message = error.message; // Fallback to general message
-    }
 
-    // Clean up common prefixes/suffixes
-    message = message.replace("execution reverted: ", "");
-    message = message.replace("VM Exception while processing transaction: reverted with reason string ", "");
-    message = message.replace("Error: ", ""); // Avoid double "Error:"
+    // Check standard Ethers v5 error properties
+    if (error.reason) { message = error.reason; }
+    else if (error.error?.message) { message = error.error.message; } // Errors wrapped in error object
+    else if (error.data?.message) { message = error.data.message; } // JSON-RPC error data field
+    else if (error.message) { message = error.message; } // Fallback general message
 
-    // Check for specific known reasons from require statements
-    if (specificReason1 && message.includes(specificReason1)) {
+    // Clean up common prefixes/suffixes from RPC providers/MetaMask
+    message = message.replace("execution reverted: ", "").replace("VM Exception while processing transaction: reverted with reason string ", "").replace("Internal JSON-RPC error.", "").replace(/error=.*{(.*)}.*}, method=.*$/, "$1"); // Extract nested reasons if possible
+    message = message.replace(/\"message\":\"(.*?)\".*$/, "$1"); // Extract message from JSON string within error
+
+    // Remove contract custom error prefix if present (e.g., "Error(string)")
+    message = message.replace(/^Error\([^)]*\)\s*/, '');
+    // Remove Panic code prefix if present (e.g., "Panic(uint256)")
+    message = message.replace(/^Panic\([^)]*\)\s*/, '');
+    // Trim whitespace
+    message = message.trim();
+
+    // Check for specific known reasons from require statements (case-insensitive)
+    if (specificReason1 && message.toLowerCase().includes(specificReason1.toLowerCase())) {
         return `Error: ${specificReason1}`;
     }
-    if (specificReason2 && message.includes(specificReason2)) {
+    if (specificReason2 && message.toLowerCase().includes(specificReason2.toLowerCase())) {
         return `Error: ${specificReason2}`;
     }
-    // Check for user rejection
-    if (message.includes("User denied transaction signature") || (error.code && error.code === 4001)) {
+    // Check for user rejection code
+    if (error.code === 4001 || message.includes("User denied transaction signature")) {
         return "Transaction rejected in MetaMask.";
+    }
+    // Check for insufficient funds for gas
+    if (error.code === -32000 && message.includes("insufficient funds")) {
+        return "Error: Insufficient funds for gas.";
     }
 
     // Return the cleaned or default message prefixed with Error:
-    return `Error: ${message}`;
+    return `Error: ${message || defaultMessage}`; // Ensure some message is returned
 }
 
 
 // --- INITIAL STATE ---
-// Ensure buttons are disabled initially if wallet not connected
-loadReportsButton.disabled = true;
-// Initial calls to check connection can happen here if needed,
-// but usually connecting on button press is fine.
+// Check if MetaMask is already connected from a previous session (optional)
+// window.addEventListener('load', async () => {
+//     if (window.ethereum && window.ethereum.selectedAddress) {
+//         // Potentially auto-connect or update UI if already connected
+//         // connectWallet(); // Be careful with auto-connecting on load
+//     } else {
+//         showConnectSection(); // Default to connect section
+//     }
+// });
+
+// Default to connect section on initial load
+showConnectSection();
