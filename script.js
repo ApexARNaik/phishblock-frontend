@@ -1,6 +1,6 @@
 // --- 1. CONFIGURATION ---
 // Replace with your deployed contract address
-const contractAddress = "0x6C331DAb0353d0BF2f36F69F4a642dE5eC99a42A";
+const contractAddress = "0x6C331DAb0353d0BF2f36F69F4a642dE5eC99a42A"; // Use your actual address
 
 // Replace with your contract's ABI
 const contractABI = [
@@ -180,7 +180,7 @@ const contractABI = [
         "stateMutability": "view",
         "type": "function"
     }
-]; // Keep the square brackets []
+]; // Make sure ABI is pasted correctly
 
 // --- 2. GLOBAL VARIABLES ---
 let provider;
@@ -188,33 +188,26 @@ let signer;
 let contract;
 
 // --- 3. DOM ELEMENTS ---
+// General Elements
 const connectButton = document.getElementById('connectButton');
 const walletAddressDisplay = document.getElementById('walletAddress');
 const loadReportsButton = document.getElementById('loadReportsButton');
 const reportList = document.getElementById('reportList');
 
+// Elements for Submitting Reports
 const cidInput = document.getElementById('cidInput');
 const submitReportButton = document.getElementById('submitReportButton');
 const submitStatusDisplay = document.getElementById('submitStatus');
 
-const voteIdInput = document.getElementById('voteIdInput');
-const upvoteButton = document.getElementById('upvoteButton');
-const downvoteButton = document.getElementById('downvoteButton');
-const voteStatusDisplay = document.getElementById('voteStatus');
-
-const resolveIdInput = document.getElementById('resolveIdInput');
-const resolveButton = document.getElementById('resolveButton');
-const resolveStatusDisplay = document.getElementById('resolveStatus');
+// Elements for Owner Actions
+const withdrawButton = document.getElementById('withdrawButton');
+const withdrawStatusDisplay = document.getElementById('withdrawStatus');
 
 // --- 4. EVENT LISTENERS ---
 connectButton.addEventListener('click', connectWallet);
 loadReportsButton.addEventListener('click', loadReports);
 submitReportButton.addEventListener('click', submitReport);
-// Voting listeners
-upvoteButton.addEventListener('click', () => handleVote(true)); // Pass true for upvote
-downvoteButton.addEventListener('click', () => handleVote(false)); // Pass false for downvote
-// Resolving listener
-resolveButton.addEventListener('click', resolveReport);
+withdrawButton.addEventListener('click', withdrawSlashedFunds); // Listener for owner withdraw
 
 // --- 5. FUNCTIONS ---
 
@@ -223,24 +216,17 @@ async function connectWallet() {
     if (typeof window.ethereum !== 'undefined') {
         console.log('MetaMask is installed!');
         try {
-            // Use Ethers.js provider
             provider = new ethers.providers.Web3Provider(window.ethereum);
-
-            // Request account access
             await provider.send("eth_requestAccounts", []);
             signer = provider.getSigner();
             const address = await signer.getAddress();
             console.log("Account:", address);
 
-            // Display connected address
             walletAddressDisplay.textContent = `Connected: ${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
             connectButton.textContent = 'Wallet Connected';
             connectButton.disabled = true;
 
-            // Initialize contract instance
             contract = new ethers.Contract(contractAddress, contractABI, signer);
-
-            // Enable the load reports button
             loadReportsButton.disabled = false;
 
         } catch (error) {
@@ -253,17 +239,16 @@ async function connectWallet() {
     }
 }
 
-// Function to load and display reports
+// Function to load and display reports (with integrated buttons)
 async function loadReports() {
     if (!contract) {
         alert("Please connect your wallet first.");
         return;
     }
 
-    reportList.innerHTML = '<li>Loading reports...</li>'; // Clear list and show loading
+    reportList.innerHTML = '<li>Loading reports...</li>';
 
     try {
-        // Get the total number of reports
         const count = await contract.reportCount();
         console.log("Total reports:", count.toNumber());
 
@@ -278,21 +263,44 @@ async function loadReports() {
         for (let i = 0; i < count.toNumber(); i++) {
             console.log("Fetching report ID:", i);
             const report = await contract.reports(i);
-            // report is an array/struct: [cid, reporter, upvotes, downvotes, stakedAmount, isResolved]
+            // report is array: [cid, reporter, upvotes, downvotes, stakedAmount, isResolved]
 
-            // Create a list item to display the report
             const listItem = document.createElement('li');
+            listItem.setAttribute('data-report-id', i);
+
+            // Create list item HTML with integrated buttons
             listItem.innerHTML = `
-                <b>Report ID: ${i}</b><br>
-                CID: ${report.cid}<br>
-                Reporter: ${report.reporter.substring(0, 6)}...${report.reporter.substring(report.reporter.length - 4)}<br>
-                Upvotes: ${report.upvotes.toString()}<br>
-                Downvotes: ${report.downvotes.toString()}<br>
-                Resolved: ${report.isResolved}
-                <hr>
-            `; // Added a horizontal rule for separation
+                <div>
+                    <b>Report ID: ${i}</b> | Resolved: ${report.isResolved ? '✅ Yes' : '❌ No'}<br>
+                    CID: ${report.cid}<br>
+                    Reporter: ${report.reporter.substring(0, 6)}...${report.reporter.substring(report.reporter.length - 4)}<br>
+                    Votes: 👍 ${report.upvotes.toString()} / 👎 ${report.downvotes.toString()}
+                </div>
+                <div class="actions">
+                    <button class="upvote-btn" data-id="${i}" ${report.isResolved ? 'disabled' : ''}>Upvote 👍</button>
+                    <button class="downvote-btn" data-id="${i}" ${report.isResolved ? 'disabled' : ''}>Downvote 👎</button>
+                    <button class="resolve-btn" data-id="${i}" ${report.isResolved ? 'disabled' : ''}>Resolve</button>
+                </div>
+                <p class="status-msg" id="status-${i}"></p> <hr>
+            `;
+
+            // Add event listeners ONLY if buttons exist and are not disabled
+            const upvoteBtn = listItem.querySelector('.upvote-btn');
+            const downvoteBtn = listItem.querySelector('.downvote-btn');
+            const resolveBtn = listItem.querySelector('.resolve-btn');
+
+            if (upvoteBtn && !report.isResolved) {
+                upvoteBtn.addEventListener('click', () => handleVote(i, true, listItem));
+            }
+            if (downvoteBtn && !report.isResolved) {
+                downvoteBtn.addEventListener('click', () => handleVote(i, false, listItem));
+            }
+            if (resolveBtn && !report.isResolved) {
+                resolveBtn.addEventListener('click', () => resolveReport(i, listItem));
+            }
+
             reportList.appendChild(listItem);
-        }
+        } // End of for loop
 
     } catch (error) {
         console.error("Error loading reports:", error);
@@ -300,182 +308,198 @@ async function loadReports() {
     }
 }
 
-// --- INITIAL STATE ---
-loadReportsButton.disabled = true; // Disable load button until wallet is connected
 // Function to submit a new report
 async function submitReport() {
     if (!contract || !signer) {
         alert("Please connect your wallet first.");
         return;
     }
-
     const cid = cidInput.value;
     if (!cid) {
         alert("Please enter a CID or URL to report.");
         return;
     }
-
     submitStatusDisplay.textContent = 'Preparing transaction...';
-    submitReportButton.disabled = true; // Disable button while processing
+    submitReportButton.disabled = true;
 
     try {
-        // Get the required stake amount from the contract
-        const stakeAmountWei = await contract.stakeAmount(); // This is a BigNumber in wei
-
+        const stakeAmountWei = await contract.stakeAmount();
         console.log("Staking amount in wei:", stakeAmountWei.toString());
         console.log("Submitting report for CID:", cid);
 
-        // Send the transaction to createReport, including the stake value
-        const tx = await contract.createReport(cid, {
-            value: stakeAmountWei // Send the required stake
-        });
-
-        submitStatusDisplay.textContent = `Transaction sent! Waiting for confirmation... Hash: ${tx.hash.substring(0, 10)}...`;
+        const tx = await contract.createReport(cid, { value: stakeAmountWei });
+        submitStatusDisplay.textContent = `Transaction sent! Waiting... Hash: ${tx.hash.substring(0, 10)}...`;
         console.log("Transaction sent:", tx.hash);
 
-        // Wait for the transaction to be mined
-        await tx.wait(); // Wait for 1 confirmation
-
-        submitStatusDisplay.textContent = 'Report submitted successfully! Transaction confirmed.';
+        await tx.wait();
+        submitStatusDisplay.textContent = 'Report submitted successfully!';
         console.log("Transaction confirmed!");
-        cidInput.value = ''; // Clear the input field
-
-        // Optional: Automatically reload the reports list
-        await loadReports();
+        cidInput.value = '';
+        await loadReports(); // Refresh list
 
     } catch (error) {
         console.error("Error submitting report:", error);
-        // Try to get a more specific error message if available
-        let displayError = "Error submitting report.";
-        if (error.reason) {
-            displayError = `Error: ${error.reason}`;
-        } else if (error.data && error.data.message) {
-            displayError = `Error: ${error.data.message}`;
-        } else if (error.message) {
-            // Shorten common MetaMask errors
-            if (error.message.includes("User denied transaction signature")) {
-                displayError = "Transaction rejected in MetaMask.";
-            } else {
-                displayError = "An error occurred. Check console.";
-            }
-        }
+        let displayError = parseContractError(error, "Error submitting report.");
         submitStatusDisplay.textContent = displayError;
     } finally {
-        // Re-enable the button whether it succeeded or failed
         submitReportButton.disabled = false;
     }
 }
 
-// Function to handle voting (both up and down)
-async function handleVote(isUpvote) {
+// Function to handle voting (updated for integrated buttons)
+async function handleVote(reportIdNum, isUpvote, listItem) {
     if (!contract || !signer) {
         alert("Please connect your wallet first.");
         return;
     }
 
-    const reportId = voteIdInput.value;
-    if (reportId === "" || isNaN(reportId)) { // Check if input is empty or not a number
-        alert("Please enter a valid Report ID to vote on.");
-        return;
-    }
-    const reportIdNum = parseInt(reportId); // Convert string input to number
+    const statusElement = listItem.querySelector('.status-msg');
+    const upvoteBtn = listItem.querySelector('.upvote-btn');
+    const downvoteBtn = listItem.querySelector('.downvote-btn');
 
-    voteStatusDisplay.textContent = `Preparing ${isUpvote ? 'upvote' : 'downvote'}...`;
-    upvoteButton.disabled = true; // Disable buttons
-    downvoteButton.disabled = true;
+    statusElement.textContent = `Preparing ${isUpvote ? 'upvote' : 'downvote'}...`;
+    if (upvoteBtn) upvoteBtn.disabled = true; // Disable buttons on this specific item
+    if (downvoteBtn) downvoteBtn.disabled = true;
 
     try {
         console.log(`Voting ${isUpvote ? 'up' : 'down'} on report ID:`, reportIdNum);
-
-        // Call the contract's vote function
         const tx = await contract.vote(reportIdNum, isUpvote);
-
-        voteStatusDisplay.textContent = `Vote transaction sent! Waiting for confirmation... Hash: ${tx.hash.substring(0, 10)}...`;
+        statusElement.textContent = `Vote sent! Waiting... Hash: ${tx.hash.substring(0, 10)}...`;
         console.log("Vote transaction sent:", tx.hash);
 
-        await tx.wait(); // Wait for confirmation
-
-        voteStatusDisplay.textContent = 'Vote submitted successfully! Transaction confirmed.';
+        await tx.wait();
+        statusElement.textContent = 'Vote confirmed!';
         console.log("Vote confirmed!");
-        voteIdInput.value = ''; // Clear the input
-
-        // Refresh the report list to show updated votes
-        await loadReports();
+        await loadReports(); // Refresh list
 
     } catch (error) {
         console.error("Error submitting vote:", error);
-        let displayError = "Error submitting vote.";
-        if (error.reason) { // Standard ethers error reason
-            displayError = `Error: ${error.reason}`;
-        } else if (error.data && error.data.message && error.data.message.includes("You have already voted!")) { // Specific check for our custom error
-            displayError = "Error: You have already voted on this report!";
-        } else if (error.data && error.data.message) { // Fallback for other RPC errors
-            displayError = `Error: ${error.data.message}`;
-        } else if (error.message && error.message.includes("User denied transaction signature")) {
-            displayError = "Transaction rejected in MetaMask.";
-        } else {
-            displayError = "An error occurred. Check console.";
-        }
-        voteStatusDisplay.textContent = displayError;
+        let displayError = parseContractError(error, "Error submitting vote.", "You have already voted!");
+        statusElement.textContent = displayError;
     } finally {
-        upvoteButton.disabled = false; // Re-enable buttons
-        downvoteButton.disabled = false;
+        // Re-enable buttons only if the report isn't resolved now
+        if (upvoteBtn && !listItem.innerHTML.includes('Resolved: ✅ Yes')) upvoteBtn.disabled = false;
+        if (downvoteBtn && !listItem.innerHTML.includes('Resolved: ✅ Yes')) downvoteBtn.disabled = false;
     }
 }
 
-// Function to resolve a report
-async function resolveReport() {
+// Function to resolve a report (updated for integrated buttons)
+async function resolveReport(reportIdNum, listItem) {
     if (!contract || !signer) {
         alert("Please connect your wallet first.");
         return;
     }
 
-    const reportId = resolveIdInput.value;
-    if (reportId === "" || isNaN(reportId)) { // Check if input is empty or not a number
-        alert("Please enter a valid Report ID to resolve.");
-        return;
-    }
-    const reportIdNum = parseInt(reportId); // Convert string input to number
+    const statusElement = listItem.querySelector('.status-msg');
+    const resolveBtn = listItem.querySelector('.resolve-btn');
 
-    resolveStatusDisplay.textContent = 'Preparing resolve transaction...';
-    resolveButton.disabled = true;
+    statusElement.textContent = 'Preparing resolve transaction...';
+    if (resolveBtn) resolveBtn.disabled = true;
 
     try {
         console.log("Resolving report ID:", reportIdNum);
-
-        // Call the contract's resolveReport function
         const tx = await contract.resolveReport(reportIdNum);
-
-        resolveStatusDisplay.textContent = `Resolve transaction sent! Waiting for confirmation... Hash: ${tx.hash.substring(0, 10)}...`;
+        statusElement.textContent = `Resolve sent! Waiting... Hash: ${tx.hash.substring(0, 10)}...`;
         console.log("Resolve transaction sent:", tx.hash);
 
-        await tx.wait(); // Wait for confirmation
-
-        resolveStatusDisplay.textContent = 'Report resolved successfully! Transaction confirmed.';
+        await tx.wait();
+        statusElement.textContent = 'Report resolved successfully!';
         console.log("Resolve confirmed!");
-        resolveIdInput.value = ''; // Clear the input
-
-        // Refresh the report list to show resolved status
-        await loadReports();
+        await loadReports(); // Refresh list
 
     } catch (error) {
         console.error("Error resolving report:", error);
-        let displayError = "Error resolving report.";
-        if (error.reason) { // Standard ethers error reason
-            displayError = `Error: ${error.reason}`;
-        } else if (error.data && error.data.message && error.data.message.includes("Not enough votes")) { // Specific check for threshold error
-            displayError = "Error: Not enough votes to resolve yet.";
-        } else if (error.data && error.data.message && error.data.message.includes("Report already resolved")) { // Specific check for already resolved error
-            displayError = "Error: Report is already resolved.";
-        } else if (error.data && error.data.message) { // Fallback for other RPC errors
-            displayError = `Error: ${error.data.message}`;
-        } else if (error.message && error.message.includes("User denied transaction signature")) {
-            displayError = "Transaction rejected in MetaMask.";
-        } else {
-            displayError = "An error occurred. Check console.";
+        let displayError = parseContractError(error, "Error resolving report.", "Not enough votes", "Report already resolved");
+        statusElement.textContent = displayError;
+        // Keep button disabled if successful (as report is now resolved)
+        // Only re-enable if there was an error *other* than 'already resolved'
+        if (resolveBtn && !displayError.includes("already resolved")) resolveBtn.disabled = false;
+    }
+    // No finally needed here as button state depends on error type or success
+}
+
+
+// Function for owner to withdraw slashed funds
+async function withdrawSlashedFunds() {
+    if (!contract || !signer) {
+        alert("Please connect your wallet first.");
+        return;
+    }
+    try { // Check owner status first
+        const ownerAddress = await contract.owner();
+        const currentUserAddress = await signer.getAddress();
+        if (ownerAddress.toLowerCase() !== currentUserAddress.toLowerCase()) {
+            withdrawStatusDisplay.textContent = "Error: Only the contract owner can withdraw.";
+            return;
         }
-        resolveStatusDisplay.textContent = displayError;
+    } catch (error) {
+        console.error("Error checking owner:", error);
+        withdrawStatusDisplay.textContent = "Error checking owner status.";
+        return;
+    }
+
+    withdrawStatusDisplay.textContent = 'Preparing withdraw transaction...';
+    withdrawButton.disabled = true;
+
+    try {
+        console.log("Attempting to withdraw slashed funds...");
+        const tx = await contract.withdrawSlashedFunds();
+        withdrawStatusDisplay.textContent = `Withdraw sent! Waiting... Hash: ${tx.hash.substring(0, 10)}...`;
+        console.log("Withdraw transaction sent:", tx.hash);
+
+        await tx.wait();
+        withdrawStatusDisplay.textContent = 'Slashed funds withdrawn successfully!';
+        console.log("Withdraw confirmed!");
+
+    } catch (error) {
+        console.error("Error withdrawing funds:", error);
+        let displayError = parseContractError(error, "Error withdrawing funds.");
+        withdrawStatusDisplay.textContent = displayError;
     } finally {
-        resolveButton.disabled = false; // Re-enable button
+        withdrawButton.disabled = false;
     }
 }
+
+// --- UTILITY FUNCTION ---
+// Helper to parse common contract error reasons
+function parseContractError(error, defaultMessage, specificReason1 = null, specificReason2 = null) {
+    console.log("Raw error:", error); // Log the full error object
+    let message = defaultMessage;
+    // Ethers v5 structure
+    if (error.reason) {
+        message = `Error: ${error.reason}`;
+    } else if (error.data && error.data.message) {
+        message = `Error: ${error.data.message}`;
+    } else if (error.error && error.error.message) { // Another possible structure
+        message = `Error: ${error.error.message}`;
+    } else if (error.message) {
+        message = error.message; // Fallback to general message
+    }
+
+    // Clean up common prefixes/suffixes
+    message = message.replace("execution reverted: ", "");
+    message = message.replace("VM Exception while processing transaction: reverted with reason string ", "");
+    message = message.replace("Error: ", ""); // Avoid double "Error:"
+
+    // Check for specific known reasons from require statements
+    if (specificReason1 && message.includes(specificReason1)) {
+        return `Error: ${specificReason1}`;
+    }
+    if (specificReason2 && message.includes(specificReason2)) {
+        return `Error: ${specificReason2}`;
+    }
+    // Check for user rejection
+    if (message.includes("User denied transaction signature") || (error.code && error.code === 4001)) {
+        return "Transaction rejected in MetaMask.";
+    }
+
+    // Return the cleaned or default message prefixed with Error:
+    return `Error: ${message}`;
+}
+
+
+// --- INITIAL STATE ---
+// Ensure buttons are disabled initially if wallet not connected
+loadReportsButton.disabled = true;
+// Initial calls to check connection can happen here if needed,
+// but usually connecting on button press is fine.
