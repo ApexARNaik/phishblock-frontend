@@ -21,7 +21,7 @@ Phishblock is a decentralized, community-driven database of reported phishing li
 ## Demo
 * **Live Frontend:** https://e13516df-d29a-42a7-97a4-4206082fc4e2-00-2sx31t6av3dvf.sisko.replit.dev/
 * **Smart Contract (Amoy):** 0x6C331DAb0353d0BF2f36F69F4a642dE5eC99a42A
-* **Video Walkthrough:** [Link to Your Demo Video Here]
+* **Video Walkthrough:** https://youtu.be/IgVh3P-AXg4
 
 ## How to Use (Frontend):
 1.  Visit the Deployed Link.
