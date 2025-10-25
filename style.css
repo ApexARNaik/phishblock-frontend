@@ -1,7 +1,5 @@
-/* Import a Google Font */
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 
-/* Basic Reset & Font */
 body {
     font-family: 'Roboto', sans-serif;
     line-height: 1.6;
@@ -12,7 +10,6 @@ body {
     min-height: 100vh;
 }
 
-/* Container */
 .container {
     max-width: 800px;
     margin: 20px auto;
@@ -22,7 +19,6 @@ body {
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
 }
 
-/* Headings */
 h1,
 h2 {
     color: #2c3e50;
@@ -30,7 +26,6 @@ h2 {
     padding-bottom: 10px;
     margin-bottom: 25px;
     margin-top: 10px;
-    /* Reset top margin */
 }
 
 h1 {
@@ -42,11 +37,8 @@ h1 {
 h2 {
     font-size: 1.6em;
     margin-top: 35px;
-    /* Add space above H2s */
 }
 
-
-/* Buttons */
 button {
     color: white;
     padding: 12px 20px;
@@ -54,7 +46,6 @@ button {
     border-radius: 6px;
     cursor: pointer;
     margin: 8px 5px 8px 0;
-    /* Consistent margin */
     font-size: 1em;
     font-weight: bold;
     transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
@@ -63,13 +54,11 @@ button {
 
 button:hover:not(:disabled) {
     transform: translateY(-2px);
-    /* Lift effect */
     box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
 }
 
 button:active:not(:disabled) {
     transform: translateY(0px);
-    /* Press down effect */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -79,14 +68,12 @@ button:disabled {
     box-shadow: none;
 }
 
-/* Primary Action Buttons */
 #connectButton,
 #loadReportsButton,
 #submitReportButton,
 #withdrawButton,
 #adminLoginButton {
     background-color: #3498db;
-    /* Blue */
 }
 
 #connectButton:hover:not(:disabled),
@@ -95,17 +82,14 @@ button:disabled {
 #withdrawButton:hover:not(:disabled),
 #adminLoginButton:hover:not(:disabled) {
     background-color: #2980b9;
-    /* Darker blue */
 }
 
-/* Secondary/Utility Buttons */
 .secondary-button,
 #logoutButton,
 #adminLogoutButton,
 #backToConnectButton,
 .admin-button {
     background-color: #7f8c8d;
-    /* Grey */
     padding: 8px 15px;
     font-size: 0.9em;
 }
@@ -116,21 +100,16 @@ button:disabled {
 #backToConnectButton:hover:not(:disabled),
 .admin-button:hover:not(:disabled) {
     background-color: #616f70;
-    /* Darker grey */
 }
 
 .admin-button {
-    /* Special style for initial admin button */
     background-color: #9b59b6;
-    /* Purple */
 }
 
 .admin-button:hover:not(:disabled) {
     background-color: #8e44ad;
-    /* Darker Purple */
 }
 
-/* Buttons within Report List */
 .actions button {
     padding: 6px 12px;
     font-size: 0.85em;
@@ -141,32 +120,23 @@ button:disabled {
 .upvote-btn {
     background-color: #2ecc71;
 }
-
-/* Green */
 .downvote-btn {
     background-color: #e74c3c;
 }
-
-/* Red */
 .resolve-btn {
     background-color: #f39c12;
 }
 
-/* Orange */
-
 .upvote-btn:hover:not(:disabled) {
     background-color: #27ae60;
 }
-
 .downvote-btn:hover:not(:disabled) {
     background-color: #c0392b;
 }
-
 .resolve-btn:hover:not(:disabled) {
     background-color: #e67e22;
 }
 
-/* Input Fields */
 input[type="text"],
 input[type="number"],
 input[type="password"] {
@@ -176,7 +146,6 @@ input[type="password"] {
     border-radius: 5px;
     box-sizing: border-box;
     width: 100%;
-    /* Make inputs take full width */
     font-size: 1em;
 }
 
@@ -184,7 +153,6 @@ input::placeholder {
     color: #aaa;
 }
 
-/* Labels */
 label {
     display: block;
     margin-bottom: 5px;
@@ -193,7 +161,6 @@ label {
     color: #555;
 }
 
-/* Report List */
 #reportList {
     list-style: none;
     padding: 0;
@@ -203,14 +170,12 @@ label {
     background-color: #ffffff;
     border: 1px solid #ecf0f1;
     border-left: 5px solid #3498db;
-    /* Add a blue left border */
     border-radius: 8px;
     padding: 18px 25px;
     margin-bottom: 18px;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
     transition: box-shadow 0.2s ease;
     word-wrap: break-word;
-    /* Prevent long CIDs from breaking layout */
 }
 
 #reportList li:hover {
@@ -224,14 +189,12 @@ label {
 #reportList li .status-msg {
     font-size: 0.85em;
     color: #e74c3c;
-    /* Red for errors */
     margin-top: 10px;
     min-height: 1em;
     font-style: italic;
     font-weight: bold;
 }
 
-/* Status Messages */
 .status-text {
     margin-top: 10px;
     font-size: 0.9em;
@@ -243,22 +206,14 @@ label {
 .error-text {
     color: #e74c3c !important;
 }
-
-/* Make errors red */
 #connectStatus {
     color: #27ae60;
 }
-
-/* Green connect status */
 #submitStatus,
 #withdrawStatus {
     color: #3498db;
 }
 
-/* Blue processing status */
-
-
-/* Horizontal Rules */
 hr {
     border: 0;
     height: 1px;
@@ -266,23 +221,18 @@ hr {
     margin: 35px 0;
 }
 
-/* Header Bar for App/Admin sections */
 .header-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
     flex-wrap: wrap;
-    /* Allow wrapping on small screens */
 }
 
 .header-bar h1 {
     margin-bottom: 0;
-    /* Remove bottom margin from h1 inside header */
     border-bottom: none;
-    /* Remove border from h1 inside header */
     text-align: left;
-    /* Align left */
     font-size: 1.8em;
 }
 
@@ -292,21 +242,15 @@ hr {
 
 .wallet-info p {
     margin: 0 0 5px 0;
-    /* Adjust spacing */
     font-weight: bold;
     color: #27ae60;
-    /* Green */
     font-size: 0.9em;
 }
 
 .wallet-info button {
     margin: 0;
-    /* Remove margin from logout button */
 }
 
-/* Page Section Visibility */
-/* .page-section { display: none; } */
-/* Initially hide via JS */
 #ata {
     font-size: 30px;
 }

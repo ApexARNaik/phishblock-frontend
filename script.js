@@ -1,8 +1,4 @@
-// --- 1. CONFIGURATION ---
-// Replace with your deployed contract address
-const contractAddress = "0x6C331DAb0353d0BF2f36F69F4a642dE5eC99a42A"; // Use your actual address
-
-// Replace with your contract's ABI
+const contractAddress = "0x6C3DAb0353d0BF2f36F69F4a642dE5eC99a42A";
 const contractABI = [
     {
         "inputs": [
@@ -180,29 +176,25 @@ const contractABI = [
         "stateMutability": "view",
         "type": "function"
     }
-]; // Make sure ABI is pasted correctly
-const ADMIN_PASSWORD = "2306"; // !!! INSECURE - For demo only !!!
+];
 
-// --- 2. GLOBAL VARIABLES ---
+const ADMIN_PASSWORD = "2306";
+
 let provider;
 let signer;
 let contract;
 let ownerAddress = null;
 let currentUserAddress = null;
 
-// --- 3. DOM ELEMENTS ---
-// Sections
 const connectSection = document.getElementById('connectSection');
 const appSection = document.getElementById('appSection');
 const adminLoginSection = document.getElementById('adminLoginSection');
 const adminSection = document.getElementById('adminSection');
 
-// Connect Section Elements
 const connectButton = document.getElementById('connectButton');
 const connectStatus = document.getElementById('connectStatus');
 const showAdminLoginButton = document.getElementById('showAdminLoginButton');
 
-// App Section Elements
 const walletAddressDisplay = document.getElementById('walletAddress');
 const loadReportsButton = document.getElementById('loadReportsButton');
 const reportList = document.getElementById('reportList');
@@ -211,19 +203,15 @@ const submitReportButton = document.getElementById('submitReportButton');
 const submitStatusDisplay = document.getElementById('submitStatus');
 const logoutButton = document.getElementById('logoutButton');
 
-// Admin Login Elements
 const adminPasswordInput = document.getElementById('adminPassword');
 const adminLoginButton = document.getElementById('adminLoginButton');
 const adminLoginStatus = document.getElementById('adminLoginStatus');
 const backToConnectButton = document.getElementById('backToConnectButton');
 
-// Admin Section Elements
 const withdrawButton = document.getElementById('withdrawButton');
 const withdrawStatusDisplay = document.getElementById('withdrawStatus');
 const adminLogoutButton = document.getElementById('adminLogoutButton');
 
-
-// --- 4. EVENT LISTENERS ---
 connectButton.addEventListener('click', connectWallet);
 logoutButton.addEventListener('click', disconnectWallet);
 loadReportsButton.addEventListener('click', loadReports);
@@ -234,8 +222,6 @@ backToConnectButton.addEventListener('click', showConnectSection);
 withdrawButton.addEventListener('click', withdrawSlashedFunds);
 adminLogoutButton.addEventListener('click', showConnectSection);
 
-
-// --- 5. PAGE NAVIGATION / VISIBILITY FUNCTIONS ---
 function showSection(sectionToShow) {
     [connectSection, appSection, adminLoginSection, adminSection].forEach(section => {
         if (section) section.style.display = 'none';
@@ -247,18 +233,15 @@ function showSection(sectionToShow) {
 
 function showConnectSection() {
     showSection(connectSection);
-    // Clear status messages when returning to connect
     connectStatus.textContent = '';
     adminLoginStatus.textContent = '';
-    adminPasswordInput.value = ''; // Clear password field
+    adminPasswordInput.value = '';
 }
 
 function showAdminLogin() {
     showSection(adminLoginSection);
-    adminLoginStatus.textContent = ''; // Clear previous errors
+    adminLoginStatus.textContent = '';
 }
-
-// --- 6. CORE WALLET & CONTRACT FUNCTIONS ---
 
 async function connectWallet() {
     if (typeof window.ethereum === 'undefined') {
@@ -278,7 +261,6 @@ async function connectWallet() {
 
         contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-        // Fetch owner address
         try {
             ownerAddress = await contract.owner();
             console.log("Contract Owner:", ownerAddress);
@@ -289,25 +271,23 @@ async function connectWallet() {
             return;
         }
 
-        // Successfully connected
-        showSection(appSection); // Show the main app section
+        showSection(appSection);
         walletAddressDisplay.textContent = `Connected: ${currentUserAddress.substring(0, 6)}...${currentUserAddress.substring(currentUserAddress.length - 4)}`;
         loadReportsButton.disabled = false;
-        submitStatusDisplay.textContent = ''; // Clear any previous submit status
-        connectButton.disabled = false; // Re-enable in case user disconnects/reconnects
+        submitStatusDisplay.textContent = '';
+        connectButton.disabled = false;
 
-        await loadReports(); // Load reports immediately after connect
+        await loadReports();
 
     } catch (error) {
         console.error("Connection Error:", error);
         connectStatus.textContent = 'Connection failed. User rejected or error occurred.';
         connectButton.disabled = false;
-        showConnectSection(); // Ensure user stays on connect page
+        showConnectSection();
     }
 }
 
 function disconnectWallet() {
-    // Reset state and return to connect screen
     provider = null;
     signer = null;
     contract = null;
@@ -338,14 +318,13 @@ async function loadReports() {
             return;
         }
 
-        reportList.innerHTML = ''; // Clear loading
+        reportList.innerHTML = '';
 
-        // Fetch reports (consider fetching in parallel for many reports, but sequential is simpler for now)
-        for (let i = numReports - 1; i >= 0; i--) { // Load newest first
+        for (let i = numReports - 1; i >= 0; i--) {
             const report = await contract.reports(i);
             const listItem = document.createElement('li');
             listItem.setAttribute('data-report-id', i);
-            listItem.classList.add(report.isResolved ? 'resolved' : 'active'); // Add class for potential styling
+            listItem.classList.add(report.isResolved ? 'resolved' : 'active');
 
             listItem.innerHTML = `
                 <div>
@@ -363,9 +342,8 @@ async function loadReports() {
                 <hr style="margin: 10px 0;">
             `;
 
-            reportList.appendChild(listItem); // Append as we fetch
+            reportList.appendChild(listItem);
 
-            // Add listeners after appending
             const upvoteBtn = listItem.querySelector('.upvote-btn');
             const downvoteBtn = listItem.querySelector('.downvote-btn');
             const resolveBtn = listItem.querySelector('.resolve-btn');
@@ -374,7 +352,7 @@ async function loadReports() {
             if (downvoteBtn && !report.isResolved) { downvoteBtn.addEventListener('click', () => handleVote(i, false, listItem)); }
             if (resolveBtn && !report.isResolved) { resolveBtn.addEventListener('click', () => resolveReport(i, listItem)); }
 
-        } // End for loop
+        }
 
     } catch (error) {
         console.error("Error loading reports:", error);
@@ -387,7 +365,7 @@ async function loadReports() {
 
 async function submitReport() {
     if (!contract || !signer) { alert("Connect wallet first."); return; }
-    const cid = cidInput.value.trim(); // Trim whitespace
+    const cid = cidInput.value.trim();
     if (!cid) { alert("Enter CID/URL."); return; }
 
     let stakeAmountWei, stakeAmountEther;
@@ -408,7 +386,7 @@ async function submitReport() {
         submitStatusDisplay.textContent = `⏳ Transaction sent! Waiting for confirmation... Hash: ${tx.hash.substring(0, 10)}...`;
         console.log("Tx Sent:", tx.hash);
 
-        await tx.wait(1); // Wait for 1 confirmation
+        await tx.wait(1);
         submitStatusDisplay.textContent = '✅ Report submitted successfully!';
         console.log("Tx Confirmed!");
         cidInput.value = '';
@@ -449,11 +427,9 @@ async function handleVote(reportIdNum, isUpvote, listItem) {
         console.error("Error submitting vote:", error);
         let displayError = parseContractError(error, "Error submitting vote.", "You have already voted!");
         statusElement.textContent = displayError;
-        // Only re-enable if there was an error
         if (upvoteBtn) upvoteBtn.disabled = false;
         if (downvoteBtn) downvoteBtn.disabled = false;
     }
-    // No finally needed - buttons disabled on success via loadReports re-render
 }
 
 async function resolveReport(reportIdNum, listItem) {
@@ -474,18 +450,15 @@ async function resolveReport(reportIdNum, listItem) {
         await tx.wait(1);
         statusElement.textContent = '✅ Report resolved successfully!';
         console.log("Resolve Confirmed!");
-        await loadReports(); // Reload to update status and disable buttons
+        await loadReports();
 
     } catch (error) {
         console.error("Error resolving report:", error);
         let displayError = parseContractError(error, "Error resolving report.", "Not enough votes", "Report already resolved");
         statusElement.textContent = displayError;
-        if (resolveBtn && !displayError.includes("already resolved")) resolveBtn.disabled = false; // Re-enable only if error wasn't 'already resolved'
+        if (resolveBtn && !displayError.includes("already resolved")) resolveBtn.disabled = false;
     }
 }
-
-
-// --- 7. ADMIN FUNCTIONS ---
 
 function handleAdminLogin() {
     const enteredPassword = adminPasswordInput.value;
@@ -523,7 +496,6 @@ async function withdrawSlashedFunds() {
     } catch (error) {
         console.error("Error withdrawing funds:", error);
         let displayError = parseContractError(error, "Error withdrawing funds.");
-        // Check if the error indicates no balance to withdraw
         if (displayError.toLowerCase().includes("transfer failed") || displayError.toLowerCase().includes("insufficient balance")) {
             displayError = "✅ No slashed funds available to withdraw currently.";
         }
@@ -533,59 +505,35 @@ async function withdrawSlashedFunds() {
     }
 }
 
-// --- UTILITY FUNCTION --- (Improved Error Parsing)
 function parseContractError(error, defaultMessage, specificReason1 = null, specificReason2 = null) {
-    console.log("Raw error object:", error); // Log the full error
+    console.log("Raw error object:", error);
     let message = defaultMessage;
 
-    // Check standard Ethers v5 error properties
     if (error.reason) { message = error.reason; }
-    else if (error.error?.message) { message = error.error.message; } // Errors wrapped in error object
-    else if (error.data?.message) { message = error.data.message; } // JSON-RPC error data field
-    else if (error.message) { message = error.message; } // Fallback general message
+    else if (error.error?.message) { message = error.error.message; }
+    else if (error.data?.message) { message = error.data.message; }
+    else if (error.message) { message = error.message; }
 
-    // Clean up common prefixes/suffixes from RPC providers/MetaMask
-    message = message.replace("execution reverted: ", "").replace("VM Exception while processing transaction: reverted with reason string ", "").replace("Internal JSON-RPC error.", "").replace(/error=.*{(.*)}.*}, method=.*$/, "$1"); // Extract nested reasons if possible
-    message = message.replace(/\"message\":\"(.*?)\".*$/, "$1"); // Extract message from JSON string within error
-
-    // Remove contract custom error prefix if present (e.g., "Error(string)")
+    message = message.replace("execution reverted: ", "").replace("VM Exception while processing transaction: reverted with reason string ", "").replace("Internal JSON-RPC error.", "").replace(/error=.*{(.*)}.*}, method=.*$/, "$1");
+    message = message.replace(/\"message\":\"(.*?)\".*$/, "$1");
     message = message.replace(/^Error\([^)]*\)\s*/, '');
-    // Remove Panic code prefix if present (e.g., "Panic(uint256)")
     message = message.replace(/^Panic\([^)]*\)\s*/, '');
-    // Trim whitespace
     message = message.trim();
 
-    // Check for specific known reasons from require statements (case-insensitive)
     if (specificReason1 && message.toLowerCase().includes(specificReason1.toLowerCase())) {
         return `Error: ${specificReason1}`;
     }
     if (specificReason2 && message.toLowerCase().includes(specificReason2.toLowerCase())) {
         return `Error: ${specificReason2}`;
     }
-    // Check for user rejection code
     if (error.code === 4001 || message.includes("User denied transaction signature")) {
         return "Transaction rejected in MetaMask.";
     }
-    // Check for insufficient funds for gas
     if (error.code === -32000 && message.includes("insufficient funds")) {
         return "Error: Insufficient funds for gas.";
     }
 
-    // Return the cleaned or default message prefixed with Error:
-    return `Error: ${message || defaultMessage}`; // Ensure some message is returned
+    return `Error: ${message || defaultMessage}`;
 }
 
-
-// --- INITIAL STATE ---
-// Check if MetaMask is already connected from a previous session (optional)
-// window.addEventListener('load', async () => {
-//     if (window.ethereum && window.ethereum.selectedAddress) {
-//         // Potentially auto-connect or update UI if already connected
-//         // connectWallet(); // Be careful with auto-connecting on load
-//     } else {
-//         showConnectSection(); // Default to connect section
-//     }
-// });
-
-// Default to connect section on initial load
 showConnectSection();
