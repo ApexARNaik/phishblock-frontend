@@ -120,9 +120,11 @@ button:disabled {
 .upvote-btn {
     background-color: #2ecc71;
 }
+
 .downvote-btn {
     background-color: #e74c3c;
 }
+
 .resolve-btn {
     background-color: #f39c12;
 }
@@ -130,9 +132,11 @@ button:disabled {
 .upvote-btn:hover:not(:disabled) {
     background-color: #27ae60;
 }
+
 .downvote-btn:hover:not(:disabled) {
     background-color: #c0392b;
 }
+
 .resolve-btn:hover:not(:disabled) {
     background-color: #e67e22;
 }
@@ -206,9 +210,11 @@ label {
 .error-text {
     color: #e74c3c !important;
 }
+
 #connectStatus {
     color: #27ae60;
 }
+
 #submitStatus,
 #withdrawStatus {
     color: #3498db;
@@ -251,6 +257,6 @@ hr {
     margin: 0;
 }
 
-#ata {
+#appTitle {
     font-size: 30px;
 }

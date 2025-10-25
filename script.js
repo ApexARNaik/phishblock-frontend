@@ -1,3 +1,4 @@
+// CONFIGURATION 
 const contractAddress = "0x6C3DAb0353d0BF2f36F69F4a642dE5eC99a42A";
 const contractABI = [
     {
@@ -177,15 +178,16 @@ const contractABI = [
         "type": "function"
     }
 ];
-
 const ADMIN_PASSWORD = "2306";
 
+// GLOBAL VARIABLES
 let provider;
 let signer;
 let contract;
 let ownerAddress = null;
 let currentUserAddress = null;
 
+// DOM ELEMENTS
 const connectSection = document.getElementById('connectSection');
 const appSection = document.getElementById('appSection');
 const adminLoginSection = document.getElementById('adminLoginSection');
@@ -212,6 +214,7 @@ const withdrawButton = document.getElementById('withdrawButton');
 const withdrawStatusDisplay = document.getElementById('withdrawStatus');
 const adminLogoutButton = document.getElementById('adminLogoutButton');
 
+// EVENT LISTENERS
 connectButton.addEventListener('click', connectWallet);
 logoutButton.addEventListener('click', disconnectWallet);
 loadReportsButton.addEventListener('click', loadReports);
@@ -222,6 +225,7 @@ backToConnectButton.addEventListener('click', showConnectSection);
 withdrawButton.addEventListener('click', withdrawSlashedFunds);
 adminLogoutButton.addEventListener('click', showConnectSection);
 
+// PAGE NAVIGATION FUNCTION
 function showSection(sectionToShow) {
     [connectSection, appSection, adminLoginSection, adminSection].forEach(section => {
         if (section) section.style.display = 'none';
